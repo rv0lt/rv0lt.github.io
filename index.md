@@ -1,5 +1,3 @@
-Here you can say lots of fun things about your site.
+Hello there and wellcome!
 
-Maybe say a some things about yourself.
-
-Or maybe what you plan to blog about.
+In this blog I will try to explain some tools and concepts relared with Kubernetes. So keep tuned if you want to learn about it!
