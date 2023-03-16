@@ -331,7 +331,8 @@ spec:
 ### Further security
 
 Now that we have this deployment, we can further secure it. There are two tools that I find particulary interesting:
-[Kube Bench](https://github.com/aquasecurity/kube-bench) runs a set of test to see if the cluster is configure acording to the [CIS](https://www.cisecurity.org/benchmark/kubernetes) Benchmark and [Kube Hunter](https://github.com/aquasecurity/kube-hunter) will try to find vulnerabilities in your cluster simulating an attacker that is trying to gain privileges.  Maybe I write about them in the future.
+[Kube Bench](https://github.com/aquasecurity/kube-bench) runs a set of test to see if the cluster is configure acording to the [CIS](https://www.cisecurity.org/benchmark/kubernetes) Benchmark. If you run it in a pod it will check for misconfigurations in your node, and if you run it as a binary in the control panel, it will check the whole cluster!
+And [Kube Hunter](https://github.com/aquasecurity/kube-hunter) will try to find vulnerabilities in your cluster simulating an attacker that is trying to gain privileges.  Maybe I write about them in the future.
 
 ### Conclussion
 
