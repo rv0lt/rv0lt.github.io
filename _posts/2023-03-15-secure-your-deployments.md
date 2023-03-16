@@ -140,6 +140,7 @@ cat pod.yaml | grep "image:" | sed "s/^.*: //" > images.txt
 We read the file and send it to grep to find the lines that contain the syntax used to define the images to deploy in Kubernetes. Finally, the sed comand is removing everything after the ":" symbol to retrieve only the image name:
 
 ![](https://i.imgur.com/9zD74Ro.png)
+
 Now, we can loop through the file images.txt and pass the same command we already used above. In our Jenkinsfile it would look like this, suppose we already have a file pod.yaml defined:
 
 ```jenkinsfile
@@ -166,7 +167,7 @@ Now, we can loop through the file images.txt and pass the same command we alread
 Remember to define your kube-linter container in the YAML file that Jenkins will use as a template.
 
 Finally, we can finish this, deploying the resource to the cluster, We can create a Role and Role Binding for the service account we are using with privileges to deploy resources, and then access the api like this:
-
+```
         stage('Deploy'){
             steps {
                 container('curl'){
@@ -174,6 +175,8 @@ Finally, we can finish this, deploying the resource to the cluster, We can creat
                 }
             }
         }
+```
+
 We have to define a new container that has curl. Because it is not included by default in Busybox which is the base image for most of the containers we are using today. For more information on accesin the API from withing a pod, you can read the official [documentation](https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/)
 
 
