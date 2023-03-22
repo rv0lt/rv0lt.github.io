@@ -250,7 +250,7 @@ To finalize, let's analyze it:
 
 There are two last things I want to mention, the first is that, despite we have gained a more secure deployment, you can see that the file is really long and looks a bit wacky. I spent a lot of time fixing the problems with the libraries and other problems with files. Don't get me wrong, I learned a lot with this project, but I can understand that developing such files always not always be optimal. What I have learned is that there is a tradeoff here, you can build a safer environment at the cost of more developing time and a more difficult to maintain file.
 
-The second thing is that, you shouldn't be tricked. On the one hand, the image is safer than our base, of course. We have a minimal image with just the things we need. No shell, no other tools. But, remember that we copied the libraries from our base, if those libraries are vulnerable, so our image will be. The reason trivy wouldn't catch them is that we have no Operating System, it is a Scratch image. So it is impossible to list them and compare them against the CVE database. In this case, it can be considered security through obscurity.
+The second thing is that, you shouldn't be tricked. On the one hand, the image is safer than our base, of course. We have a minimal image with just the things we need. No shell, no other tools. But, remember that we copied the libraries from our base, if those libraries are vulnerable, so our image will be. The reason trivy wouldn't catch them is that we have no way of listing them, it is a Scratch image. So it is impossible to compare against the CVE database. In this case, it can be considered security through obscurity.
 
 ### Bonus: CD with GitHub Actions
 
