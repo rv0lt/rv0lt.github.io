@@ -2,7 +2,7 @@
 
 ### Introduction
 
-One of the first concepts that you can encounter when building a Docker image is, how to reduce (and optimize) the size of it. I mean, it makes sense, less image size equals less building time, less disk space and, in general, faster images to use, push and pull. And about this topic I want to talk today. Because, as always in live, only a Sith deals in absolutes. And the circumstances that apply to developer A are not always the same that apply to developer B, lets deep into it. The code presented today is available in [my github](https://github.com/rv0lt/CurriculumDeployment)
+One of the first concepts that you can encounter when building a Docker image is, how to reduce (and optimize) the size of it. I mean, it makes sense, less image size equals less building time, less disk space and, in general, faster images to use, push and pull. And about this topic I want to talk today. Because, as always in live, only a Sith deals in absolutes. And the circumstances that apply to developer A are not always the same that apply to developer B, lets deep into it. The code presented today is available in [my github](https://github.com/rv0lt/CurriculumDeployment).
 
 ### Big vs Small Images
 
@@ -36,15 +36,15 @@ Returning to our issue. For node, we could initially solve our concern with this
 FROM alpine AS build
 RUN apk add build-base # utilities with basic libraries to compile
 COPY code.c .
-RUN gcc -o code code.c
+RUN gcc -o code code.c #compile our code
 
 FROM alpine
-COPY --from=build hello .
-CMD ["./hello"]
+COPY --from=build code .
+CMD ["./code"]
 ```
 Or install the Python3 and pip packages for [Python.](https://stackoverflow.com/questions/62554991/how-do-i-install-python-on-alpine-linux)
 
-But now, let's go one step forward, introducing scratch and [distroless](https://github.com/GoogleContainerTools/distroless). These are images, which are empty, they have been stripped of everything, including a shell. Which means, that to use them you need always another image as base/builder.
+But now, let's go one step forward, introducing scratch and [distroless](https://github.com/GoogleContainerTools/distroless). These are images, which are empty, they have been stripped of everything, including a shell. Which means, that, to use them you need always another image as base/builder.
 
 ```Dockerfile
 FROM python as base 
@@ -57,24 +57,24 @@ COPY script.py .
 CMD ["/usr/local/bin/python","script.py"]
 ```
 
-However, as we will see in the following section, there are a lot more things to consider. First, every shared system library needs to be copied as well for the code to work (in a compile language like C we can use the -static flag to include the libraries in the binary). Also, as I mentioned, there is no shell, so debugging would actually be pretty difficult. In Kubernetes we could use [ephemeral containers](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container), however at the writing of this post, that requires access to alpha features. 
+However, as we will see in the following section, there are a lot more things to consider. First, every shared system library that the code calls needs to be copied as well for it to work (in a compile language like C we can use the -static flag to include the libraries in the binary). Also, as I mentioned, there is no shell, so debugging would actually be pretty difficult. In Kubernetes we could use [ephemeral containers](https://kubernetes.io/docs/tasks/debug/debug-application/debug-running-pod/#ephemeral-container), however at the writing of this post, that requires access to alpha features. 
 
-So, my take on this is the following: distroless is definitely a go-to. The less attack surface and the less image size the better. But, if you are just starting to learn it can be pretty overwhelming seeing such Dockerfiles as we will see in the next section. Also, without a shell, debugging is a more difficult and tedious task. There are pretty minimalistic images such as alpine and busybox, that include some basic tools, where we can also run our applications and they should be fine. If you and your application can manage to maintain a longer Dockerfile, you have another way to debug it without a shell (or don't need to do it), then go for it. It will all depend on your use case and circumstances. But is good that, at least, you understand the differences between them
+So, my take on this is the following: distroless is definitely a go-to. The less attack surface and the less image size the better. But, if you are just starting to learn it can be pretty overwhelming seeing such Dockerfiles as we will see in the next section. Also, without a shell, debugging is a more difficult and tedious task. There are pretty minimalistic images where we can also run our applications such as alpine and busybox, that also include some basic tools, and it should be fine. If you and your application can manage to maintain a longer Dockerfile, you have another way to debug it without a shell (or don't need to do it), then go for it. It will all depend on your use case and circumstances. But is good that, at least, you understand the differences between them
 
 ### Nginx on Scratch (really scratched my head)
 
 Now, let's go for the practical case. The idea is pretty simple, we are going to try to move an application to run on Scratch. This would be our bucket list:
 
- - Because Scratch is empty, we need, firstly, a binary that we will exec. A note here, because we don't have a shell the command to run it should be passed as json. If you try to run the command directly it will fails because, under the hood, docker tries to call sh i.e. a shell
+ - Because Scratch is empty, we need, firstly, a binary that we will exec. A note here, because we don't have a shell the command to run it should be passed as json. If you try to run the command directly it will fail because, under the hood, docker tries to call sh i.e. a shell
  ```Dockerfile
 CMD  /binary -options #no
 CMD  ["/binary","-options"] #yes
 ```
- -  If our binary is a simple app, that's all we need. However, for longer app, they probably make use of system libraries or other libraries you have downloaded. I mentioned this in the previous section, a good way to tell which libraries a program uses is [ldd](https://linuxhint.com/use-ldd-command-in-linux/). In the nginx example, an issue I faced is that, because it is built on [modules](https://www.nginx.com/resources/datasheets/nginx-modules/) then there are libraries that are not requiered to execute the binary, but some default modules do.
+ -  If our binary is a simple app, that's all we need. However, for a bigger app, they probably make use of system libraries or other libraries you have downloaded. I mentioned this in the previous section, a good way to tell which libraries a program uses is [ldd](https://linuxhint.com/use-ldd-command-in-linux/). In the nginx example, an issue I faced is that, because it is built on [modules](https://www.nginx.com/resources/datasheets/nginx-modules/) then there are libraries that are not requiered to execute the binary, but some default modules do.
  -  Apart from libraries, there are other system files and folder that our application may need. For example the [passwd](https://en.wikipedia.org/wiki/Passwd) file stores important information about the users in the system. If we want to run our app as a non-root user (as we should do) then we need this file. 
  - Depending on the application we may need other files, in our nginx example. I run into an issue if I didn't have a /run directory. Because there is where nginx stores it's process.pid
 
-So let's get into it. My idea is a simple nginx that will serve in localhost:8080/cv my resume (I'm looking for jobs, if you like what you are reading and want a Junior Devops, SRE, Data Engineer, you can [contact me](alvaro.revuelta.martinez@gmail.com). And if we try to access the main page, localhost:8080 it will redirect to this blog.
+So let's get into it. My idea is a simple nginx that will serve in localhost:8080/cv my resume (I'm looking for jobs, if you like what you are reading and want a Junior Devops, SRE, Data Engineer, you can [contact me](alvaro.revuelta.martinez@gmail.com)). And if we try to access the main page, localhost:8080 it will redirect to this blog.
 
 First, modify the default conf file of nginx to something like this:
  ```Conf
@@ -116,13 +116,13 @@ COPY  --from=base  /etc/group  /etc/group
 COPY  --from=base  /etc/passwd  /etc/passwd
 ```
 
-Until here, pretty straightforward. We have copied the files needed, and then, moved the files and folders that the app need to work. Next step are the libraries, here is where I spent more time. Because if we try to use ldd to find the libraries:
+Until here, pretty straightforward. We have copied the files needed, and then, moved the files and folders that the nginx needs to work. Next step are the libraries, here is where I spent more time. Because if we try to use ldd to find the libraries:
 
  
 ![enter image description here](https://i.imgur.com/Tsp2pRM.png)
-It will tell use, those. However, as I mentioned, nginx is built using modules. So those modules have also more dependence:
+It will tell use, those. However, as I mentioned, nginx is built using modules. So those modules use also more libraries:
 ![enter image description here](https://i.imgur.com/XqHPrCQ.png)
-Another option, would have been to download in a ubuntu base image the source code, and compile it ourselves using the -static flag, so that the binary can contain the libraries already.
+Another option would have been to download, in a ubuntu base image, the source code and compile it ourselves using the -static flag, so that the binary can contain the libraries already.
 
 So, the second part of the Dockerfile would be:
 
@@ -225,15 +225,10 @@ COPY  --from=base  /lib/x86_64-linux-gnu/libgpg-error.so.0  /lib/x86_64-linux-gn
 # copy the files that nginx needs to run
 
 COPY  --from=base  /var/lib/nginx/  /var/lib/nginx/
-
 COPY  --from=base  /usr/lib/nginx/  /usr/lib/nginx/
-
 COPY  --from=base  /usr/share/nginx/  /usr/share/nginx/
-
 COPY  --from=base  /var/log/nginx/  /var/log/nginx/
-
 COPY  --from=base  /etc/nginx/  /etc/nginx/
-
 COPY  --from=base  /sbin/nginx  /sbin/nginx
 
 
@@ -244,12 +239,16 @@ CMD  ["/sbin/nginx","-g",  "daemon  off;"]
 ```
 
 And we have it, it works. The complete file is avaible [here](https://raw.githubusercontent.com/rv0lt/CurriculumDeployment/main/files/Dockerfile)
+
+
 ![enter image description here](https://i.imgur.com/yqbsBCt.png)
+
 For completion, I have also written a YAML file for a Kubernetes deployment using this image. You can check it [here](https://github.com/rv0lt/CurriculumDeployment/blob/main/kube/deployment.yaml). Also, this image is uploaded to my [DockerHub](https://hub.docker.com/repository/docker/rv0lt/mycv/general).
 
 To finalize, let's analyze it:
 ![enter image description here](https://i.imgur.com/SeKf4N2.png)
-There are two last things I want to mention, the first is that, despite we have gained a more secure deployment, you can see that the file is really long and looks a bit wacky. I spent a lot of time fixing the problems with the libraries and other problems with files. Don't get me wrong, I learned a lot with this project, but I can understand that developing such files always can be not always optimal. What I have learned is that there is a tradeoff here, you can build a safer environment at the cost of more developing time and a more difficult to maintain file.
+
+There are two last things I want to mention, the first is that, despite we have gained a more secure deployment, you can see that the file is really long and looks a bit wacky. I spent a lot of time fixing the problems with the libraries and other problems with files. Don't get me wrong, I learned a lot with this project, but I can understand that developing such files always not always be optimal. What I have learned is that there is a tradeoff here, you can build a safer environment at the cost of more developing time and a more difficult to maintain file.
 
 The second thing is that, you shouldn't be tricked. On the one hand, the image is safer than our base, of course. We have a minimal image with just the things we need. No shell, no other tools. But, remember that we copied the libraries from our base, if those libraries are vulnerable, so our image will be. The reason trivy wouldn't catch them is that we have no Operating System, it is a Scratch image. So it is impossible to list them and compare them against the CVE database. In this case, it can be considered security through obscurity.
 
