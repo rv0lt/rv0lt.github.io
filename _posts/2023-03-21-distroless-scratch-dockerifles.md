@@ -243,7 +243,7 @@ And we have it, it works. The complete file is avaible [here](https://raw.github
 
 ![enter image description here](https://i.imgur.com/yqbsBCt.png)
 
-For completion, I have also written a YAML file for a Kubernetes deployment using this image. You can check it [here](https://github.com/rv0lt/CurriculumDeployment/blob/main/kube/deployment.yaml). Also, this image is uploaded to my [DockerHub](https://hub.docker.com/repository/docker/rv0lt/mycv/general).
+For completion, I have also written a YAML file for a Kubernetes deployment using this image. You can check it [here](https://github.com/rv0lt/CurriculumDeployment/blob/main/kube/deployment.yaml). Also, this image is uploaded to my [DockerHub](https://hub.docker.com/repository/docker/rv0lt/mycv/general). As well as a helm chart to install it using helm.
 
 To finalize, let's analyze it:
 ![enter image description here](https://i.imgur.com/SeKf4N2.png)
